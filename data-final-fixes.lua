@@ -11,6 +11,7 @@ local djb2_mix_u32 = hash_lib.djb2_mix_u32
 local strbyte = string.byte
 local band = bit32.band
 local type = type
+local pairs = pairs
 
 local qualities = tlib.keys(data.raw["quality"])
 
