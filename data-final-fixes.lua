@@ -18,8 +18,12 @@ local pairs = pairs
 
 local qualities = tlib.keys(data.raw["quality"])
 
----@type table<SignalNumber, SignalID>
-local sn_sid = {}
+---@type table<number, true>
+local sn_sid_keyset = {}
+---@type number[]
+local sn_sid_keys = {}
+---@type SignalID[]
+local sn_sid_values = {}
 ---@type table<string, table<string, (SignalNumber | table<string, SignalNumber>) > >
 local sid_sn = {}
 
@@ -105,7 +109,7 @@ for i_q = 1, #qualities do
 						name = name,
 					}
 					local signal_number = hash_signal_id(signal_type, quality, name)
-					if sn_sid[signal_number] then
+					if sn_sid_keyset[signal_number] then
 						error({
 							"",
 							"signal-numbers: hash collision for signal #",
@@ -114,7 +118,9 @@ for i_q = 1, #qualities do
 							serpent.line(signal_id),
 						})
 					end
-					sn_sid[signal_number] = signal_id
+					sn_sid_keyset[signal_number] = true
+					sn_sid_keys[#sn_sid_keys + 1] = signal_number
+					sn_sid_values[#sn_sid_values + 1] = signal_id
 					index_sid_sn(signal_id, signal_number)
 				end
 			end
@@ -127,7 +133,7 @@ for i_q = 1, #qualities do
 		quality = quality,
 	}
 	local q_signal_number = hash_signal_id("quality", quality, "")
-	if sn_sid[q_signal_number] then
+	if sn_sid_keyset[q_signal_number] then
 		error({
 			"",
 			"signal-numbers: hash collision for quality signal #",
@@ -136,7 +142,9 @@ for i_q = 1, #qualities do
 			serpent.line(q_signal_id),
 		})
 	end
-	sn_sid[q_signal_number] = q_signal_id
+	sn_sid_keyset[q_signal_number] = true
+	sn_sid_keys[#sn_sid_keys + 1] = q_signal_number
+	sn_sid_values[#sn_sid_values + 1] = q_signal_id
 	index_sid_sn(q_signal_id, q_signal_number)
 	total_count = total_count + 1
 end
@@ -146,7 +154,8 @@ data:extend({
 		type = "mod-data",
 		name = "signal-numbers",
 		data = {
-			sn_sid = sn_sid,
+			sn_sid_keys = sn_sid_keys,
+			sn_sid_values = sn_sid_values,
 			sid_sn = sid_sn,
 		},
 	},

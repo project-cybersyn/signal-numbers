@@ -3,8 +3,26 @@
 ---@alias SignalNumberCounts table<SignalNumber, int32>
 
 local mod_data = prototypes.mod_data["signal-numbers"].data
-local sn_sid = mod_data.sn_sid --[[@as table<SignalNumber, SignalID>]]
+local sn_sid_keys = mod_data.sn_sid_keys --[[@as SignalNumber[] ]]
+local sn_sid_values = mod_data.sn_sid_values --[[@as SignalID[] ]]
 local sid_sn = mod_data.sid_sn --[[@as table<string, table<string, (SignalNumber | table<string, SignalNumber>)>> ]]
+
+local rebuild_prof = helpers.create_profiler()
+local sn_sid = {}
+for i = 1, #sn_sid_keys do
+	local sn = sn_sid_keys[i]
+	local sid = sn_sid_values[i]
+	sn_sid[sn] = sid
+end
+rebuild_prof.stop()
+---@diagnostic disable-next-line: param-type-mismatch
+log({
+	"",
+	"signal-numbers: rebuilt sn_sid table for ",
+	script.mod_name,
+	" in ",
+	rebuild_prof,
+})
 
 local type = type
 
