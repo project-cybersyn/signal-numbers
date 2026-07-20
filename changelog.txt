@@ -1,7 +1,8 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.0.1
 Date: ????
-  Changes:
+  Bugfixes:
+    - Fixed a data phase crash caused by the `pypostprocessing` mod writing to `defines.prototypes.item.fluid`
 ---------------------------------------------------------------------------------------------------
 Version: 1.0.0
   Changes:

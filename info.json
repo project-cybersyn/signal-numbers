@@ -7,7 +7,7 @@
   "homepage": "https://github.com/project-cybersyn/signal-numbers",
   "description": "Generates deterministic numerical hashes for circuit signals. (This is a library mod that makes no gameplay changes.)",
   "factorio_version": "2.1",
-  "dependencies": [ "base >= 2.1.7" ],
+  "dependencies": [ "base >= 2.1.7", "(?) pypostprocessing" ],
   "package": {
     "git_publish_branch": "master",
     "ignore": [ "crowdin.yml", "stylua.toml", "tests", "doc/**", "site/**", ".gitmodules", ".editorconfig" ],

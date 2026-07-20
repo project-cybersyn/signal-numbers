@@ -1,3 +1,6 @@
+-- XXX: pypostprocessing mutates this in `data-final-fixes.lua` but we need to undo it here.
+defines.prototypes.item["fluid"] = nil
+
 local prototype_info = require("__core__.lualib.prototype-info")
 local tlib = require("lib.core.table")
 local metadata = require("metadata")
