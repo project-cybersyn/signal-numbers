@@ -33,7 +33,7 @@ local function index_sid_sn(sid, sn)
 	local sid_sn_q = sid_sn_t[sid_quality]
 	if not sid_sn_q then
 		if sid_type == "quality" then
-			sid_sn_q = sid
+			sid_sn_t[sid_quality] = sn
 			return
 		end
 		sid_sn_q = {}
@@ -134,6 +134,7 @@ for i_q = 1, #qualities do
 	end
 	sn_sid[q_signal_number] = q_signal_id
 	index_sid_sn(q_signal_id, q_signal_number)
+	total_count = total_count + 1
 end
 
 data:extend({
