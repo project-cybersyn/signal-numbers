@@ -76,6 +76,27 @@ local signals = signal_numbers.counts_to_signals(counts)
 local signals, counts = signal_numbers.counts_to_signals_split(counts)
 ```
 
+## EmmyLua Typings
+
+IF using FMTK and the EmmyLua typechecker, you may obtain typings for your development workflow:
+
+1) Unzip the mod somewhere.
+2) Add the following to `.emmyrc.json`:
+```json
+{
+  "workspace": {
+    "library": [
+      "D:\\dev\\factorio\\signal-numbers\\signal-numbers.lua"
+    ]
+  }
+}
+```
+3) Import with type assertions:
+```lua
+-- `control.lua`
+local signal_numbers = require("__signal-numbers__.signal-numbers") --[[@as SignalNumbers.Lib]]
+```
+
 ## Contributing
 
 Please use the [GitHub repository](https://github.com/project-cybersyn/signal-numbers) for questions, bug reports, or pull requests.
