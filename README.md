@@ -51,6 +51,31 @@ local sn = signal_numbers.signal_to_number(sid)
 local signal_number = signal_numbers.exploded_signal_to_number(ty, name, quality)
 ```
 
+- **signals_to_counts**
+```lua
+---Convert a list of `Signal`s to a mapping of `SignalNumber` to counts.
+---@param signals Signal[]
+---@return table<SignalNumber, int32> counts
+local counts = signal_numbers.signals_to_counts(signals)
+```
+
+- **counts_to_signals**
+```lua
+---Convert a mapping of `SignalNumber` to counts back into a list of `Signal`s.
+---@param counts table<SignalNumber, int32>
+---@return Signal[]
+local signals = signal_numbers.counts_to_signals(counts)
+```
+
+- **counts_to_signals_split**
+```lua
+---Split a mapping of `SignalNumber` to counts into two parallel arrays: one of `SignalID`s and one of corresponding counts. The index of the signal is the same as the index of the corresponding count.
+---@param counts table<SignalNumber, int32>
+---@return SignalID[] signal_ids
+---@return int32[] counts
+local signals, counts = signal_numbers.counts_to_signals_split(counts)
+```
+
 ## Contributing
 
 Please use the [GitHub repository](https://github.com/project-cybersyn/signal-numbers) for questions, bug reports, or pull requests.

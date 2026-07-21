@@ -2,6 +2,7 @@
 Version: 1.0.3
 Date: ????
   Changes:
+    - Added `counts_to_signals` and `counts_to_signals_split`.
 ---------------------------------------------------------------------------------------------------
 Version: 1.0.2
 Date: 2026-07-20

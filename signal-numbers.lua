@@ -1,6 +1,10 @@
----@alias SignalNumber int64
+local pairs = pairs
+local type = type
 
----@alias SignalNumberCounts table<SignalNumber, int32>
+---@class SignalNumbers.Lib
+local lib = {}
+
+---@alias SignalNumber int64
 
 local mod_data = prototypes.mod_data["signal-numbers"].data
 local sn_sid_keys = mod_data.sn_sid_keys --[[@as SignalNumber[] ]]
@@ -23,11 +27,6 @@ log({
 	" in ",
 	rebuild_prof,
 })
-
-local type = type
-
----@class SignalNumbers.Lib
-local lib = {}
 
 lib.sn_sid = sn_sid
 lib.sid_sn = sid_sn
@@ -75,17 +74,50 @@ function lib.exploded_signal_to_number(ty, name, quality)
 	return sid_sn_quality[name or ""]
 end
 
+---Convert a list of `Signal`s to a mapping of `SignalNumber` to counts.
 ---@param signals Signal[]
----@return SignalNumberCounts
+---@return table<SignalNumber, int32> counts
 function lib.signals_to_counts(signals)
-	---@type SignalNumberCounts
+	---@type table<SignalNumber, int32>
 	local counts = {}
 	for i = 1, #signals do
 		local signal = signals[i]
 		local sn = signal_to_number(signal.signal)
-		counts[sn] = (counts[sn] or 0) + signal.count
+		if sn then counts[sn] = (counts[sn] or 0) + signal.count end
 	end
 	return counts
+end
+
+---Convert a mapping of `SignalNumber` to counts back into a list of `Signal`s.
+---@param counts table<SignalNumber, int32>
+---@return Signal[]
+function lib.counts_to_signals(counts)
+	---@type Signal[]
+	local signals = {}
+	for sn, count in pairs(counts) do
+		local sid = number_to_signal(sn)
+		if sid then signals[#signals + 1] = { signal = sid, count = count } end
+	end
+	return signals
+end
+
+---Split a mapping of `SignalNumber` to counts into two parallel arrays: one of `SignalID`s and one of corresponding counts. The index of the signal is the same as the index of the corresponding count.
+---@param counts table<SignalNumber, int32>
+---@return SignalID[] signal_ids
+---@return int32[] counts
+function lib.counts_to_signals_split(counts)
+	---@type SignalID[]
+	local signal_ids = {}
+	---@type int32[]
+	local counts_out = {}
+	for sn, count in pairs(counts) do
+		local sid = number_to_signal(sn)
+		if sid then
+			signal_ids[#signal_ids + 1] = sid
+			counts_out[#counts_out + 1] = count
+		end
+	end
+	return signal_ids, counts_out
 end
 
 return lib
