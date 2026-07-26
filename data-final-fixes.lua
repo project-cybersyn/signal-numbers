@@ -12,6 +12,8 @@ local jenkins_mix_u32 = hash_lib.jenkins_mix_u32
 local jenkins_finalize_u32 = hash_lib.jenkins_finalize_u32
 local djb2_mix_u32 = hash_lib.djb2_mix_u32
 local strbyte = string.byte
+local strsub = string.sub
+local strmatch = string.match
 local band = bit32.band
 local type = type
 local pairs = pairs
@@ -26,6 +28,22 @@ local sn_sid_keys = {}
 local sn_sid_values = {}
 ---@type table<string, table<string, (SignalNumber | table<string, SignalNumber>) > >
 local sid_sn = {}
+---@type table<number, true>
+local sn_parameter_set = {}
+---@type table<number, true>
+local sn_virtual_set = {}
+---@type table<number, true>
+local sn_train_cargo_set = {}
+---@type table<number, true>
+local sn_item_set = {}
+---@type table<number, true>
+local sn_fluid_set = {}
+---@type table<number, true>
+local sn_quality_set = {}
+---@type number[]
+local sn_stacksize_keys = {}
+---@type uint32[]
+local sn_stacksize_values = {}
 
 ---@param sid SignalID
 ---@param sn SignalNumber
@@ -100,7 +118,7 @@ for i_q = 1, #qualities do
 			local pt = types[i_pt]
 			local prototypes = data.raw[pt]
 			if prototypes then
-				for name in pairs(prototypes) do
+				for name, proto in pairs(prototypes) do
 					total_count = total_count + 1
 					---@type SignalID
 					local signal_id = {
@@ -114,7 +132,7 @@ for i_q = 1, #qualities do
 							"",
 							"signal-numbers: hash collision for signal #",
 							signal_number,
-							" ",
+							" incoming colliding signal: ",
 							serpent.line(signal_id),
 						})
 					end
@@ -122,6 +140,32 @@ for i_q = 1, #qualities do
 					sn_sid_keys[#sn_sid_keys + 1] = signal_number
 					sn_sid_values[#sn_sid_values + 1] = signal_id
 					index_sid_sn(signal_id, signal_number)
+
+					local is_parameter = strmatch(name, "^parameter%-")
+
+					if is_parameter then sn_parameter_set[signal_number] = true end
+
+					if pt == "virtual-signal" then
+						sn_virtual_set[signal_number] = true
+					end
+
+					if
+						not is_parameter
+						and (signal_type == "item" or signal_type == "fluid")
+					then
+						sn_train_cargo_set[signal_number] = true
+					end
+
+					if (not is_parameter) and signal_type == "item" then
+						sn_item_set[signal_number] = true
+						sn_stacksize_keys[#sn_stacksize_keys + 1] = signal_number
+						sn_stacksize_values[#sn_stacksize_values + 1] = proto.stack_size
+							or 1
+					end
+
+					if (not is_parameter) and signal_type == "fluid" then
+						sn_fluid_set[signal_number] = true
+					end
 				end
 			end
 		end
@@ -146,6 +190,7 @@ for i_q = 1, #qualities do
 	sn_sid_keys[#sn_sid_keys + 1] = q_signal_number
 	sn_sid_values[#sn_sid_values + 1] = q_signal_id
 	index_sid_sn(q_signal_id, q_signal_number)
+	sn_quality_set[q_signal_number] = true
 	total_count = total_count + 1
 end
 
@@ -157,6 +202,14 @@ data:extend({
 			sn_sid_keys = sn_sid_keys,
 			sn_sid_values = sn_sid_values,
 			sid_sn = sid_sn,
+			sn_stacksize_keys = sn_stacksize_keys,
+			sn_stacksize_values = sn_stacksize_values,
+			sn_parameter = tlib.keys(sn_parameter_set),
+			sn_virtual = tlib.keys(sn_virtual_set),
+			sn_item = tlib.keys(sn_item_set),
+			sn_fluid = tlib.keys(sn_fluid_set),
+			sn_train_cargo = tlib.keys(sn_train_cargo_set),
+			sn_quality = tlib.keys(sn_quality_set),
 		},
 	},
 })

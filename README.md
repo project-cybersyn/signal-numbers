@@ -4,15 +4,15 @@
 
 **Signal Numbers is a library mod intended for use by other mod developers. It does not make gameplay changes.**
 
-**Signal Numbers** is a tool for CPU usage optimiziation in mods that make extensive use of `SignalID`s. It creates a two-way deterministic hash mapping between `SignalID`s and Lua numbers, associating a unique number to each `SignalID` and vice versa.
+**Signal Numbers** is a tool for CPU/UPS optimization in mods that make extensive use of `SignalID`s. It creates a two-way deterministic hash mapping between `SignalID`s and Lua numbers, associating a unique number to each `SignalID`.
 
 This scheme has several advantages over typical string-based signal hashing schemes:
 
 - No string concatenation or other Lua garbage creation.
-- No cache misses/string parsing of novel keys. (all possible keys are prepopulated)
+- No cache misses/string parsing (all possible keys are prepopulated)
 - Fastest possible hash lookups inside Lua (byval hashing of the number's bits)
 
-The tradeoff is the usage of a modest amount of memory to hold the complete hash table.
+The tradeoff is the usage of a modest amount of static memory to hold the complete hash table.
 
 ## How to Use
 
@@ -29,7 +29,7 @@ The following methods are available:
 ```lua
 ---Convert a SignalNumber to a SignalID. Returns nil if the number is not valid.
 ---@param sn SignalNumber
----@return SignalID?
+---@return SQSignalID?
 local signal_id = signal_numbers.number_to_signal(sn)
 ```
 
@@ -71,9 +71,17 @@ local signals = signal_numbers.counts_to_signals(counts)
 ```lua
 ---Split a mapping of `SignalNumber` to counts into two parallel arrays: one of `SignalID`s and one of corresponding counts. The index of the signal is the same as the index of the corresponding count.
 ---@param counts table<SignalNumber, int32>
----@return SignalID[] signal_ids
+---@return SQSignalID[] signal_ids
 ---@return int32[] counts
 local signals, counts = signal_numbers.counts_to_signals_split(counts)
+```
+
+- **is_parameter**, **is_virtual**, **is_item**, **is_fluid**, **is_train_cargo**, **is_quality**
+```lua
+---Test if a signal number is of the given type. This is faster than unwrapping to a `SignalID`.
+---@param signal_number SignalNumber
+---@return result boolean `true` if the signal is of the given type.
+local result = is_X(signal_number)
 ```
 
 ## EmmyLua Typings

@@ -2,6 +2,10 @@
 Version: 1.0.4
 Date: ????
   Changes:
+    - Added `SQSignalID` type, which is a `SignalID` where the `quality`, if given, is always a string.
+    - Added: `is_parameter`, `is_virtual`, `is_item`, `is_fluid`, `is_train_cargo`, `is_quality`
+    - Added `get_stack_size`
+    - Added `with_quality`
 ---------------------------------------------------------------------------------------------------
 Version: 1.0.3
 Date: 2026-07-20
