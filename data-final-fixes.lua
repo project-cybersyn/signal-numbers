@@ -2,103 +2,73 @@ local prototype_info = require("__core__.lualib.prototype-info")
 local tlib = require("lib.core.table")
 local metadata = require("metadata")
 local hash_lib = require("lib.core.math.hash")
+local base64 = require("lib.core.math.base64")
 
 local signal_types = metadata.signal_types
 local signal_prototype_types = metadata.signal_prototype_types
-local jenkins_mix_u32 = hash_lib.jenkins_mix_u32
-local jenkins_finalize_u32 = hash_lib.jenkins_finalize_u32
-local djb2_mix_u32 = hash_lib.djb2_mix_u32
-local strbyte = string.byte
-local strsub = string.sub
+local signal_type_keys = metadata.signal_type_keys
+local murmur3_32 = hash_lib.murmur3_32
+local base64_u32 = base64.encode_u32
+local base64_u64 = base64.encode_u64
 local strmatch = string.match
-local band = bit32.band
-local type = type
 local pairs = pairs
 
 local qualities = tlib.keys(data.raw["quality"])
 
----@type table<number, true>
-local sn_sid_keyset = {}
----@type number[]
-local sn_sid_keys = {}
+---@type table<SignalKey, true>
+local key_sid_keyset = {}
+---@type SignalKey[]
+local key_sid_keys = {}
 ---@type SignalID[]
-local sn_sid_values = {}
----@type table<string, table<string, (SignalNumber | table<string, SignalNumber>) > >
-local sid_sn = {}
----@type table<number, true>
-local sn_parameter_set = {}
----@type table<number, true>
-local sn_virtual_set = {}
----@type table<number, true>
-local sn_train_cargo_set = {}
----@type table<number, true>
-local sn_item_set = {}
----@type table<number, true>
-local sn_fluid_set = {}
----@type table<number, true>
-local sn_quality_set = {}
----@type number[]
-local sn_stacksize_keys = {}
+local key_sid_values = {}
+---@type table<string, table<string, table<string, SignalKey>>>
+local sid_key = {}
+---@type table<SignalKey, true>
+local key_parameter_set = {}
+---@type table<SignalKey, true>
+local key_train_cargo_set = {}
+---@type SignalKey[]
+local key_stacksize_keys = {}
 ---@type uint32[]
-local sn_stacksize_values = {}
+local key_stacksize_values = {}
 
 ---@param sid SignalID
----@param sn SignalNumber
-local function index_sid_sn(sid, sn)
+---@param key SignalKey
+local function index_sid_key(sid, key)
 	local sid_type = sid.type or "item"
-	local sid_sn_t = sid_sn[sid_type]
-	if not sid_sn_t then
-		sid_sn_t = {}
-		sid_sn[sid_type] = sid_sn_t
+	local sid_key_type = sid_key[sid_type]
+	if not sid_key_type then
+		sid_key_type = {}
+		sid_key[sid_type] = sid_key_type
 	end
 
 	local sid_quality = sid.quality or "normal"
-	local sid_sn_q = sid_sn_t[sid_quality]
-	if not sid_sn_q then
-		if sid_type == "quality" then
-			sid_sn_t[sid_quality] = sn
-			return
-		end
-		sid_sn_q = {}
-		sid_sn_t[sid_quality] = sid_sn_q
+	local sid_key_quality = sid_key_type[sid_quality]
+	if not sid_key_quality then
+		sid_key_quality = {}
+		sid_key_type[sid_quality] = sid_key_quality
 	end
-	if sid_type == "quality" then return end
 
-	sid_sn_q[sid.name] = sn
+	sid_key_quality[sid.name] = key
 end
 
-local LOW_21_MASK = 0x1FFFFF
-local U32_MASK = 0xFFFFFFFF
-local TWO_POW_32 = 4294967296
-local MAX_SAFE_INT53 = 9007199254740991
+local EMPTY_HASH = 0
 
-local function hash_signal_id(signal_type, quality, name)
-	local h1 = 0
-	local h2 = 5381
-
-	local function mix_component(component)
-		for i = 1, #component do
-			local byte = strbyte(component, i)
-			h1 = jenkins_mix_u32(h1, byte)
-			h2 = djb2_mix_u32(h2, byte)
-		end
-		h1 = jenkins_mix_u32(h1, 0)
-		h2 = djb2_mix_u32(h2, 0)
-	end
-
-	mix_component(signal_type)
-	mix_component(quality)
-	mix_component(name)
-
-	h1 = jenkins_finalize_u32(h1)
-	local high21 = band(h1, LOW_21_MASK)
-	local low32 = band(h2, U32_MASK)
-	local sn = high21 * TWO_POW_32 + low32
-	assert(
-		sn >= 0 and sn <= MAX_SAFE_INT53 and sn % 1 == 0,
-		"signal hash exceeds exact int53 range"
-	)
-	return sn
+---@param signal_type SignalIDType
+---@param quality string
+---@param name string
+---@return SignalKey
+local function make_signal_key(signal_type, quality, name)
+	local type_key = signal_type_keys[signal_type]
+	assert(type_key, "unknown signal type: " .. signal_type)
+	local quality_hash = quality == "normal" and EMPTY_HASH or murmur3_32(quality)
+	local name_hash_1 = name == "" and EMPTY_HASH or murmur3_32(name)
+	local name_hash_2 = name == "" and EMPTY_HASH or murmur3_32(name, 0x9E3779B9)
+	local key = type_key
+		.. base64_u32(quality_hash)
+		.. base64_u64(name_hash_1, name_hash_2)
+	assert(#key == 18, "signal key has unexpected length")
+	return key
 end
 
 log({ "", "signal-numbers: generating signal hashes..." })
@@ -123,72 +93,66 @@ for i_q = 1, #qualities do
 						quality = quality,
 						name = name,
 					}
-					local signal_number = hash_signal_id(signal_type, quality, name)
-					if sn_sid_keyset[signal_number] then
+					local signal_key = make_signal_key(signal_type, quality, name)
+					if key_sid_keyset[signal_key] then
 						error({
 							"",
-							"signal-numbers: hash collision for signal #",
-							signal_number,
+							"signal-numbers: hash collision for signal key ",
+							serpent.line(signal_key),
 							" incoming colliding signal: ",
 							serpent.line(signal_id),
 						})
 					end
-					sn_sid_keyset[signal_number] = true
-					sn_sid_keys[#sn_sid_keys + 1] = signal_number
-					sn_sid_values[#sn_sid_values + 1] = signal_id
-					index_sid_sn(signal_id, signal_number)
+					key_sid_keyset[signal_key] = true
+					key_sid_keys[#key_sid_keys + 1] = signal_key
+					key_sid_values[#key_sid_values + 1] = signal_id
+					index_sid_key(signal_id, signal_key)
 
 					local is_parameter = strmatch(name, "^parameter%-")
 
-					if is_parameter then sn_parameter_set[signal_number] = true end
-
-					if pt == "virtual-signal" then
-						sn_virtual_set[signal_number] = true
-					end
+					if is_parameter then key_parameter_set[signal_key] = true end
 
 					if
 						not is_parameter
 						and (signal_type == "item" or signal_type == "fluid")
 					then
-						sn_train_cargo_set[signal_number] = true
+						key_train_cargo_set[signal_key] = true
 					end
 
 					if (not is_parameter) and signal_type == "item" then
-						sn_item_set[signal_number] = true
-						sn_stacksize_keys[#sn_stacksize_keys + 1] = signal_number
-						sn_stacksize_values[#sn_stacksize_values + 1] = proto.stack_size
+						key_stacksize_keys[#key_stacksize_keys + 1] = signal_key
+						key_stacksize_values[#key_stacksize_values + 1] = proto.stack_size
 							or 1
-					end
-
-					if (not is_parameter) and signal_type == "fluid" then
-						sn_fluid_set[signal_number] = true
 					end
 				end
 			end
 		end
 	end
 
-	-- Generate quality signal separately
-	local q_signal_id = {
-		type = "quality",
-		quality = quality,
-	}
-	local q_signal_number = hash_signal_id("quality", quality, "")
-	if sn_sid_keyset[q_signal_number] then
-		error({
-			"",
-			"signal-numbers: hash collision for quality signal #",
-			q_signal_number,
-			" ",
-			serpent.line(q_signal_id),
-		})
+	-- Quality signals can independently have any signal quality.
+	for i_n = 1, #qualities do
+		local name = qualities[i_n]
+		local q_signal_id = {
+			type = "quality",
+			quality = quality,
+			name = name,
+		}
+		local q_signal_key = make_signal_key("quality", quality, name)
+		if key_sid_keyset[q_signal_key] then
+			error({
+				"",
+				"signal-numbers: hash collision for quality signal key ",
+				serpent.line(q_signal_key),
+				" ",
+				serpent.line(q_signal_id),
+			})
+		end
+		key_sid_keyset[q_signal_key] = true
+		key_sid_keys[#key_sid_keys + 1] = q_signal_key
+		key_sid_values[#key_sid_values + 1] = q_signal_id
+		index_sid_key(q_signal_id, q_signal_key)
+		total_count = total_count + 1
 	end
-	sn_sid_keyset[q_signal_number] = true
-	sn_sid_keys[#sn_sid_keys + 1] = q_signal_number
-	sn_sid_values[#sn_sid_values + 1] = q_signal_id
-	index_sid_sn(q_signal_id, q_signal_number)
-	sn_quality_set[q_signal_number] = true
-	total_count = total_count + 1
 end
 
 data:extend({
@@ -196,17 +160,13 @@ data:extend({
 		type = "mod-data",
 		name = "signal-numbers",
 		data = {
-			sn_sid_keys = sn_sid_keys,
-			sn_sid_values = sn_sid_values,
-			sid_sn = sid_sn,
-			sn_stacksize_keys = sn_stacksize_keys,
-			sn_stacksize_values = sn_stacksize_values,
-			sn_parameter = tlib.keys(sn_parameter_set),
-			sn_virtual = tlib.keys(sn_virtual_set),
-			sn_item = tlib.keys(sn_item_set),
-			sn_fluid = tlib.keys(sn_fluid_set),
-			sn_train_cargo = tlib.keys(sn_train_cargo_set),
-			sn_quality = tlib.keys(sn_quality_set),
+			sid_keys = key_sid_keys,
+			sid_values = key_sid_values,
+			sid_key = sid_key,
+			stacksize_keys = key_stacksize_keys,
+			stacksize_values = key_stacksize_values,
+			parameter = tlib.keys(key_parameter_set),
+			train_cargo = tlib.keys(key_train_cargo_set),
 		},
 	},
 })

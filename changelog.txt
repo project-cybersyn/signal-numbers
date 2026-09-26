@@ -1,4 +1,13 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.0
+Date: 2026-09-25
+  Changes:
+    - BREAKING CHANGE: Replaced numeric signal hashes with deterministic 18-byte readable string keys.
+    - Renamed `SignalNumber` to `SignalKey`.
+    - BREAKING CHANGE: Renamed APIs: `key_to_signal`, `signal_to_key`, and `exploded_signal_to_key`.
+  Compatibility:
+    - This release changes the key type and conversion API names and is not compatible with 1.x consumers.
+---------------------------------------------------------------------------------------------------
 Version: 1.0.4
 Date: ????
   Changes:
