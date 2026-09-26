@@ -60,6 +60,7 @@ local EMPTY_HASH = 0
 ---@return SignalKey
 local function make_signal_key(signal_type, quality, name)
 	local type_key = signal_type_keys[signal_type]
+	---@diagnostic disable-next-line: unnecessary-assert
 	assert(type_key, "unknown signal type: " .. signal_type)
 	local quality_hash = quality == "normal" and EMPTY_HASH or murmur3_32(quality)
 	local name_hash_1 = name == "" and EMPTY_HASH or murmur3_32(name)
